@@ -1,6 +1,10 @@
 const { pool } = require("../lib/db");
 
-const COMMISSION_RATE = Number(process.env.COMMISSION_RATE || 10);
+async function getCommissionRate() {
+  const result = await pool.query("SELECT value FROM site_settings WHERE key = 'commissionRate'");
+  if (result.rows[0]) return Number(result.rows[0].value);
+  return Number(process.env.COMMISSION_RATE || 10);
+}
 
 function genOrderRef() {
   return "KOS-" + Math.floor(10000 + Math.random() * 89999);
@@ -25,6 +29,7 @@ async function createOrder(req, res) {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    const commissionRateSetting = await getCommissionRate();
 
     const orderRef = genOrderRef();
     const buyerId = req.user ? req.user.sub : null;
@@ -57,7 +62,7 @@ async function createOrder(req, res) {
       let commission = 0, sellerPayout = 0, platformEarnings = 0, commissionRate = 0;
 
       if (product.seller_id) {
-        commissionRate = COMMISSION_RATE;
+        commissionRate = commissionRateSetting;
         commission = revenue * (commissionRate / 100);
         sellerPayout = revenue - commission;
         platformEarnings = commission;
@@ -135,4 +140,30 @@ async function listOrders(req, res) {
   res.json(items.rows);
 }
 
-module.exports = { createOrder, myOrders, listOrders };
+const VALID_ITEM_STATUSES = ["placed", "processing", "shipped", "delivered", "cancelled"];
+
+// Admin can update any item's tracking status. A seller can only update items
+// belonging to them.
+async function updateItemStatus(req, res) {
+  const { status } = req.body;
+  if (!VALID_ITEM_STATUSES.includes(status)) {
+    return res.status(400).json({ error: "Invalid status." });
+  }
+  const item = await pool.query("SELECT * FROM order_items WHERE id = $1", [req.params.id]);
+  if (!item.rows[0]) return res.status(404).json({ error: "Order item not found." });
+
+  if (req.user.role === "seller") {
+    const sp = await pool.query("SELECT id FROM seller_profiles WHERE user_id = $1", [req.user.sub]);
+    if (!sp.rows[0] || sp.rows[0].id !== item.rows[0].seller_id) {
+      return res.status(403).json({ error: "You can only update your own order items." });
+    }
+  }
+
+  const result = await pool.query(
+    "UPDATE order_items SET status = $1, status_updated_at = now() WHERE id = $2 RETURNING *",
+    [status, req.params.id]
+  );
+  res.json(result.rows[0]);
+}
+
+module.exports = { createOrder, myOrders, listOrders, updateItemStatus };
