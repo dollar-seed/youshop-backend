@@ -3,6 +3,8 @@ const { pool } = require("../lib/db");
 const DEFAULTS = {
   videoUrl: "https://www.youtube.com/embed/9d2JkvbtY_4",
   commissionRate: String(process.env.COMMISSION_RATE || 10),
+  heroHeadline: "",
+  heroSubtext: "",
 };
 
 async function getSettings(req, res) {
@@ -13,7 +15,7 @@ async function getSettings(req, res) {
 }
 
 async function updateSettings(req, res) {
-  const allowedKeys = ["videoUrl", "commissionRate"];
+  const allowedKeys = ["videoUrl", "commissionRate", "heroHeadline", "heroSubtext"];
   const entries = Object.entries(req.body).filter(([k]) => allowedKeys.includes(k));
   if (!entries.length) return res.status(400).json({ error: "No valid settings provided." });
 

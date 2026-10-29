@@ -21,6 +21,23 @@ async function createCategory(req, res) {
   }
 }
 
+async function updateCategory(req, res) {
+  const { name } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: "Category name is required." });
+  try {
+    const result = await pool.query(
+      "UPDATE categories SET name = $1 WHERE id = $2 RETURNING *",
+      [name.trim(), req.params.id]
+    );
+    if (!result.rows[0]) return res.status(404).json({ error: "Category not found." });
+    res.json(result.rows[0]);
+  } catch (e) {
+    if (e.code === "23505") return res.status(409).json({ error: "That category name already exists." });
+    console.error(e);
+    res.status(500).json({ error: "Could not update category." });
+  }
+}
+
 async function deleteCategory(req, res) {
   await pool.query("DELETE FROM categories WHERE id = $1", [req.params.id]);
   res.status(204).end();
@@ -133,6 +150,6 @@ async function deleteProduct(req, res) {
 }
 
 module.exports = {
-  listCategories, createCategory, deleteCategory,
+  listCategories, createCategory, updateCategory, deleteCategory,
   listProducts, getProduct, createProduct, updateProduct, deleteProduct,
 };

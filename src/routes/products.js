@@ -5,6 +5,7 @@ const { requireAuth } = require("../middleware/auth");
 
 router.get("/categories", productController.listCategories);
 router.post("/categories", requireAuth("admin"), productController.createCategory);
+router.put("/categories/:id", requireAuth("admin"), productController.updateCategory);
 router.delete("/categories/:id", requireAuth("admin"), productController.deleteCategory);
 
 router.get("/", productController.listProducts);

@@ -11,6 +11,7 @@ const carouselRoutes = require("./routes/carousel");
 const settingsRoutes = require("./routes/settings");
 const expenseRoutes = require("./routes/expenses");
 const dashboardRoutes = require("./routes/dashboard");
+const videoRoutes = require("./routes/videos");
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use("/carousel", carouselRoutes);
 app.use("/settings", settingsRoutes);
 app.use("/expenses", expenseRoutes);
 app.use("/dashboard", dashboardRoutes);
+app.use("/videos", videoRoutes);
 
 // 404
 app.use((req, res) => res.status(404).json({ error: "Not found." }));
